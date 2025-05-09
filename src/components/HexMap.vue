@@ -7,7 +7,8 @@
       <g v-for="hex in enrichedHexes" :key="hex.label">
         <!-- draw hexagon -->
         <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
-          :fill="terrainColors[hex.terrain] || terrainColors.default" stroke="#000" stroke-width="1"
+          :fill="terrainColors[hex.terrain] || terrainColors.default"
+          :class="{ selected: hex.label === selectedHex?.label }" stroke="#000" stroke-width="1"
           @click.stop="selectHex(hex)" />
         <!-- label -->
         <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
@@ -149,5 +150,11 @@ const terrainColors = {
   font-size: 0.6em;
   fill: #000;
   pointer-events: none;
+}
+
+polygon.selected {
+  stroke: #ff6600 !important;
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
 }
 </style>
