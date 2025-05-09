@@ -22,24 +22,17 @@ const isGMView = computed(() => route.path.startsWith('/gm'))
 #app {
   display: flex;
   flex-direction: column;
-  /* Stack vertically */
   height: 100vh;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .app-header {
-  flex: 0 0 auto;
-  padding: .1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  /* or center if you want center-aligned text */
-  gap: 0.1rem;
+  text-align: center;
 }
 
 .app-main {
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  overflow: hidden;
 }
 </style>

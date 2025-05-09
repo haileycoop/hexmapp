@@ -132,10 +132,9 @@ const terrainColors = {
   background: #eee;
   color: #333;
   font-size: 1rem;
-  padding: 0.5rem 1rem;
+  padding: 0.2rem .3rem;
   box-sizing: border-box;
   text-align: left;
-  border-bottom: 1px solid #ccc;
   margin-bottom: 0.25rem;
 }
 
@@ -143,6 +142,7 @@ const terrainColors = {
   flex: 1;
   width: 100%;
   height: 100%;
+  padding: 0.2rem 0rem;
   background: #fff;
   border: 1px solid #ccc;
   display: block;

@@ -20,9 +20,7 @@ const props = defineProps({
   background: #eee;
   color: #333;
   font-size: .5rem;
-  padding: 0.05rem .1rem;
-  box-sizing: border-box;
+  padding: 0.05rem .05rem;
   text-align: left;
-  border-bottom: 1px solid #ccc;
 }
 </style>
