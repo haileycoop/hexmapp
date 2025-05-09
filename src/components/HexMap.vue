@@ -5,10 +5,12 @@
     </div>
     <div class="hexmap-svg-wrapper" @click="clearSelection">
       <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
+        <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
+          height="1536" />
         <g v-for="hex in enrichedHexes" :key="hex.label">
           <!-- Main hex -->
           <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
-            :fill="terrainColors[hex.terrain] || terrainColors.default" class="hexagon" @click.stop="selectHex(hex)" />
+            :fill="hex.terrain ? 'transparent' : '#ccc'" class="hexagon" @click.stop="selectHex(hex)" />
 
           <!-- Inset highlight -->
           <polygon v-if="hex.label === selectedHex?.label"
@@ -30,6 +32,12 @@ import { ref, onMounted, computed } from 'vue'
 import { fetchHexData } from '../services/sheetService'
 import { axialFromIndex } from '../utils/hexUtils'
 import HexInfo from './HexInfo.vue'
+
+// ————————————————————————
+// Backdrop management
+// ————————————————————————
+const originInImage = { x: 1290, y: 816 } // center of a 2048x1536 image
+const { cx: cx0, cy: cy0 } = axialToPixel({ q: 0, r: 0 })
 
 // ————————————————————————
 // Selection logic
@@ -60,7 +68,7 @@ onMounted(async () => {
 // ————————————————————————
 // Hex geometry
 // ————————————————————————
-const hexSize = 30
+const hexSize = 41
 function axialToPixel({ q, r }) {
   return {
     cx: hexSize * (1.5 * q),
