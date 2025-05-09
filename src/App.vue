@@ -1,21 +1,25 @@
 <template>
   <div id="app">
-    <nav>
-      <router-link to="/player">Player</router-link> |
-      <router-link to="/gm">GM</router-link>
-    </nav>
-    <router-view />
+    <header class="app-header">
+      <h1>HexMapp</h1>
+      <p>{{ isGMView ? 'GM View' : '' }}</p>
+    </header>
+    <main class="app-main">
+      <HexMap :isGM="isGMView" />
+    </main>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'App'
-}
+<script setup>
+import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+import HexMap from './components/HexMap.vue'
+
+const route = useRoute()
+const isGMView = computed(() => route.path.startsWith('/gm'))
 </script>
 
 <style>
-/* Global app styling */
 #app {
   max-width: none;
   padding: 20px;
@@ -26,7 +30,6 @@ h1 {
   font-size: 20pt;
 }
 
-/* Ensure body background fits full screen */
 body {
   margin: 0;
 }

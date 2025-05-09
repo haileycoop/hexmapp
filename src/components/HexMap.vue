@@ -1,9 +1,11 @@
 <template>
   <div class="hexmap-container">
-    <svg :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
+    <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
       <g v-for="hex in enrichedHexes" :key="hex.label">
+        <!-- draw hexagon -->
         <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
           :fill="terrainColors[hex.terrain] || terrainColors.default" stroke="#000" stroke-width="1" />
+        <!-- label -->
         <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
           {{ hex.label }}
         </text>
@@ -14,61 +16,68 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
 import { fetchHexData } from '../services/sheetService'
+import { axialFromIndex } from '../utils/hexUtils'
 
-// pull in all our hex-utils in one go:
-import {
-  hexSize,
-  axialFromIndex,
-  axialToPixel,
-  hexagonPoints,
-  TOTAL_HEX_COUNT
-} from '../utils/hexUtils.js'
-
-// 1) load your sheet data (already in spiral order)
-const rawData = ref([])
-onMounted(async () => {
-  rawData.value = await fetchHexData()
+// Accept GM flag from parent
+const props = defineProps({
+  isGM: Boolean
 })
 
-// 2) GM vs Player toggle
-const route = useRoute()
-const viewIsGM = computed(() => route.path.startsWith('/gm'))
+// Spreadsheet data (assumed in spiral order)
+const raw = ref([])
+onMounted(async () => {
+  raw.value = await fetchHexData()
+})
 
-// 3) build & enrich all hexes in one array
+// Size of each hex
+const hexSize = 30
+
+// Convert axial coordinates to pixel center (flat-top)
+function axialToPixel({ q, r }) {
+  return {
+    cx: hexSize * (1.5 * q),
+    cy: hexSize * (Math.sqrt(3) * (r + q / 2))
+  }
+}
+
+// Get six corner points of a hex
+function hexagonPoints(cx, cy) {
+  const pts = []
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i
+    pts.push({ x: cx + hexSize * Math.cos(a), y: cy + hexSize * Math.sin(a) })
+  }
+  return pts
+}
+
+// Build hexes + enrich with sheet data
 const enrichedHexes = computed(() => {
-  return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
-    // spiral → axial → pixel
+  const count = 331 // radius 10 spiral
+  return Array.from({ length: count }, (_, i) => {
     const axial = axialFromIndex(i)
     const { cx, cy } = axialToPixel(axial)
     const corners = hexagonPoints(cx, cy)
-
-    // merge on your sheet row:
-    const row = rawData.value[i] || {}
+    const row = raw.value[i] || {}
     const visible = row.visible === 'TRUE'
-
     return {
       cx, cy, corners,
       label: row.hex || `${i}`,
-      terrain: (viewIsGM.value || visible) ? row.terrain : undefined
+      terrain: props.isGM || visible ? row.terrain : undefined
     }
   })
 })
 
-// 4) compute viewBox so nothing ever clips
-const viewBox = computed(() => {
-  const allPts = enrichedHexes.value.flatMap(h => h.corners)
-  const xs = allPts.map(p => p.x)
-  const ys = allPts.map(p => p.y)
-  const minX = Math.min(...xs)
-  const minY = Math.min(...ys)
-  const w = Math.max(...xs) - minX
-  const h = Math.max(...ys) - minY
-  return `${minX} ${minY} ${w} ${h}`
-})
+// Compute SVG bounds
+const all = enrichedHexes.value.flatMap(h => h.corners)
+const xs = all.map(p => p.x)
+const ys = all.map(p => p.y)
+const minX = Math.min(...xs)
+const minY = Math.min(...ys)
+const width = Math.max(...xs) - minX
+const height = Math.max(...ys) - minY
 
-// 5) simple terrain→color map
+// Color lookup
 const terrainColors = {
   forest: '#228B22',
   swamp: '#6B8E23',
@@ -90,9 +99,9 @@ const terrainColors = {
 .hexmap-svg {
   width: 100%;
   height: 100%;
-  display: block;
   background: #fff;
   border: 1px solid #ccc;
+  display: block;
 }
 
 .hex-label {

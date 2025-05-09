@@ -1,16 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import GMView from './views/GMView.vue'
-import PlayerView from './views/PlayerView.vue'
+import App from './App.vue'
 
 const routes = [
-  { path: '/gm', component: GMView },
-  { path: '/player', component: PlayerView },
+  { path: '/gm', component: App },
+  { path: '/player', component: App },
   { path: '/', redirect: '/player' }
 ]
 
-const router = createRouter({
+export default createRouter({
   history: createWebHistory(),
   routes
 })
-
-export default router
