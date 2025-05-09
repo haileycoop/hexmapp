@@ -1,9 +1,9 @@
 // src/utils/hexUtils.js
 
 // ─── your hex “radius” ───────────────────────────────────────
-export const hexSize    = 30
-export const MAX_RADIUS = 10
-export const TOTAL_HEX_COUNT = 1 + 3 * MAX_RADIUS * (MAX_RADIUS + 1) // = 331
+export const hexSize    = 41
+export const MAX_RADIUS = 22
+export const TOTAL_HEX_COUNT = 1 + 3 * MAX_RADIUS * (MAX_RADIUS + 1) // = 817
 
 // ─── axial distance (to origin by default) ───────────────────
 export function axialDistance(a, b = { q: 0, r: 0 }) {

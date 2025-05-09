@@ -30,7 +30,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { fetchHexData } from '../services/sheetService'
-import { axialFromIndex } from '../utils/hexUtils'
 import HexInfo from './HexInfo.vue'
 
 // ————————————————————————
@@ -68,29 +67,19 @@ onMounted(async () => {
 // ————————————————————————
 // Hex geometry
 // ————————————————————————
-const hexSize = 41
-function axialToPixel({ q, r }) {
-  return {
-    cx: hexSize * (1.5 * q),
-    cy: hexSize * (Math.sqrt(3) * (r + q / 2))
-  }
-}
-
-function hexagonPoints(cx, cy) {
-  const pts = []
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i
-    pts.push({ x: cx + hexSize * Math.cos(a), y: cy + hexSize * Math.sin(a) })
-  }
-  return pts
-}
+import {
+  hexSize,
+  axialToPixel,
+  hexagonPoints,
+  axialFromIndex,
+  TOTAL_HEX_COUNT
+} from '../utils/hexUtils'
 
 // ————————————————————————
 // Enrich hexes
 // ————————————————————————
 const enrichedHexes = computed(() => {
-  const count = 331 // radius 10 spiral
-  return Array.from({ length: count }, (_, i) => {
+  return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
     const axial = axialFromIndex(i)
     const { cx, cy } = axialToPixel(axial)
     const corners = hexagonPoints(cx, cy)
