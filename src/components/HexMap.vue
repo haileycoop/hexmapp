@@ -96,9 +96,16 @@ const enrichedHexes = computed(() => {
 })
 
 // ————————————————————————
-// Compute viewBox
+// Compute viewBox (only radius 10)
 // ————————————————————————
-const all = enrichedHexes.value.flatMap(h => h.corners)
+import { axialDistance } from '../utils/hexUtils'
+
+const radiusForView = 10
+const coreHexes = enrichedHexes.value.filter((_, i) =>
+  axialDistance(axialFromIndex(i)) <= radiusForView
+)
+
+const all = coreHexes.flatMap(h => h.corners)
 const xs = all.map(p => p.x)
 const ys = all.map(p => p.y)
 const minX = Math.min(...xs)
@@ -167,6 +174,13 @@ function insetCorners(corners, scale = 0.92) {
   background: #fff;
   display: block;
   border: none;
+}
+
+.hexmap-svg-wrapper {
+  width: 75%;
+  height: 100%;
+  overflow: auto;
+  /* was hidden */
 }
 
 .hex-label {
