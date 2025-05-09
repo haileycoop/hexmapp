@@ -4,24 +4,27 @@
       <HexInfo :hex="selectedHex" :isGM="props.isGM" />
     </div>
     <div class="hexmap-svg-wrapper" @click="clearSelection">
-      <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
-        <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
-          height="1536" />
-        <g v-for="hex in enrichedHexes" :key="hex.label">
-          <!-- Main hex -->
-          <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
-            :fill="hex.terrain ? 'transparent' : '#ccc'" class="hexagon" @click.stop="selectHex(hex)" />
-
-          <!-- Inset highlight -->
-          <polygon v-if="hex.label === selectedHex?.label"
-            :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
-            @click.stop="selectHex(hex)" />
-
-          <!-- Label -->
-          <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
-            {{ hex.label }}
-          </text>
+      <svg ref="svgRef" :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet"
+        class="hexmap-svg" @mousedown="startPan" @mousemove="onPan" @mouseup="endPan" @mouseleave="endPan"
+        @wheel.prevent="onZoom" width="1500" height="1500">
+        <g :transform="`translate(${pan.x}, ${pan.y}) scale(${zoom})`">
+          <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
+            height="1536" />
+          <g v-for="hex in enrichedHexes" :key="hex.label">
+            <!-- Main hex -->
+            <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
+              :fill="hex.terrain ? 'transparent' : '#ccc'" class="hexagon" @click.stop="selectHex(hex)" />
+            <!-- Inset highlight -->
+            <polygon v-if="hex.label === selectedHex?.label"
+              :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
+              @click.stop="selectHex(hex)" />
+            <!-- Label -->
+            <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
+              {{ hex.label }}
+            </text>
+          </g>
         </g>
+
       </svg>
     </div>
   </div>
@@ -37,6 +40,40 @@ import HexInfo from './HexInfo.vue'
 // ————————————————————————
 const originInImage = { x: 1290, y: 816 } // center of a 2048x1536 image
 const { cx: cx0, cy: cy0 } = axialToPixel({ q: 0, r: 0 })
+
+// ————————————————————————
+// Pan & zoom logic
+// ————————————————————————
+const svgRef = ref(null)
+const pan = ref({ x: 0, y: 0 })
+const zoom = ref(1)
+
+let isPanning = false
+let lastPos = { x: 0, y: 0 }
+
+function startPan(e) {
+  isPanning = true
+  lastPos = { x: e.clientX, y: e.clientY }
+}
+
+function onPan(e) {
+  if (!isPanning) return
+  const dx = e.clientX - lastPos.x
+  const dy = e.clientY - lastPos.y
+  pan.value.x += dx
+  pan.value.y += dy
+  lastPos = { x: e.clientX, y: e.clientY }
+}
+
+function endPan() {
+  isPanning = false
+}
+
+function onZoom(e) {
+  const direction = e.deltaY > 0 ? -1 : 1
+  const scaleFactor = 1 + direction * 0.1
+  zoom.value = Math.min(Math.max(zoom.value * scaleFactor, 0.2), 4)
+}
 
 // ————————————————————————
 // Selection logic
@@ -152,7 +189,12 @@ function insetCorners(corners, scale = 0.92) {
 }
 
 .hex-sidebar {
-  width: 25%;
+  flex: 0 0 20vw;
+  /* start as 20% of the screen width */
+  max-width: 300px;
+  /* cap it so it doesn't get huge */
+  min-width: 100px;
+  /* keeps it readable on small screens */
   background: #eee;
   color: #333;
   font-size: 1rem;
@@ -169,18 +211,19 @@ function insetCorners(corners, scale = 0.92) {
 }
 
 .hexmap-svg {
-  width: 100%;
-  height: 100%;
-  background: #fff;
-  display: block;
-  border: none;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  /* for mobile drag */
 }
 
 .hexmap-svg-wrapper {
   width: 75%;
   height: 100%;
   overflow: auto;
-  /* was hidden */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .hex-label {
