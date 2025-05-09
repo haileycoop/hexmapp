@@ -1,21 +1,27 @@
 <template>
-  <div class="hexmap-container" @click="clearSelection">
-    <div class="hex-popup">
+  <div class="hexmap-container">
+    <div class="hex-sidebar">
       <HexInfo :hex="selectedHex" :isGM="props.isGM" />
     </div>
-    <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
-      <g v-for="hex in enrichedHexes" :key="hex.label">
-        <!-- draw hexagon -->
-        <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
-          :fill="terrainColors[hex.terrain] || terrainColors.default"
-          :class="{ selected: hex.label === selectedHex?.label }" stroke="#000" stroke-width="1"
-          @click.stop="selectHex(hex)" />
-        <!-- label -->
-        <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
-          {{ hex.label }}
-        </text>
-      </g>
-    </svg>
+    <div class="hexmap-svg-wrapper" @click="clearSelection">
+      <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
+        <g v-for="hex in enrichedHexes" :key="hex.label">
+          <!-- Main hex -->
+          <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
+            :fill="terrainColors[hex.terrain] || terrainColors.default" class="hexagon" @click.stop="selectHex(hex)" />
+
+          <!-- Inset highlight -->
+          <polygon v-if="hex.label === selectedHex?.label"
+            :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
+            @click.stop="selectHex(hex)" />
+
+          <!-- Label -->
+          <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
+            {{ hex.label }}
+          </text>
+        </g>
+      </svg>
+    </div>
   </div>
 </template>
 
@@ -115,37 +121,55 @@ const terrainColors = {
   water: '#1E90FF',
   default: '#CCCCCC'
 }
+
+// ————————————————————————
+// Selected hex highlight
+// ————————————————————————
+function insetCorners(corners, scale = 0.92) {
+  // Shrink points towards the hex center
+  const cx = corners.reduce((sum, p) => sum + p.x, 0) / 6
+  const cy = corners.reduce((sum, p) => sum + p.y, 0) / 6
+  return corners.map(p => ({
+    x: cx + (p.x - cx) * scale,
+    y: cy + (p.y - cy) * scale
+  }))
+}
+
 </script>
 
 <style scoped>
 .hexmap-container {
-  width: 100%;
-  height: calc(100vh - 100px);
-  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  width: 100%;
+  height: calc(100vh - 3rem);
+  /* minus header */
+  overflow: hidden;
 }
 
-.hex-popup {
-  width: 100%;
+.hex-sidebar {
+  width: 25%;
   background: #eee;
   color: #333;
   font-size: 1rem;
-  padding: 0.2rem .3rem;
+  padding: 1rem;
   box-sizing: border-box;
-  text-align: left;
-  margin-bottom: 0.25rem;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+.hexmap-svg-wrapper {
+  width: 75%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .hexmap-svg {
-  flex: 1;
   width: 100%;
   height: 100%;
-  padding: 0.2rem 0rem;
   background: #fff;
-  border: 1px solid #ccc;
   display: block;
+  border: none;
 }
 
 .hex-label {
@@ -154,9 +178,16 @@ const terrainColors = {
   pointer-events: none;
 }
 
-polygon.selected {
-  stroke: #ff6600 !important;
-  stroke-width: 4;
-  vector-effect: non-scaling-stroke;
+.hexagon {
+  stroke: #000;
+  stroke-width: 1;
+  transition: stroke 0.2s, stroke-width 0.2s;
+}
+
+.hex-highlight {
+  fill: none;
+  stroke: #ff6600;
+  stroke-width: 2;
+  pointer-events: none;
 }
 </style>
