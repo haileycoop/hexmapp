@@ -1,16 +1,14 @@
 <template>
-  <div class="hexmap-container">
+  <div class="hexmap-container" @click="clearSelection">
     <div class="hex-popup">
-      <div v-if="selectedHex">
-        Terrain: {{ selectedHex.terrain || 'Unknown' }}
-      </div>
+      <HexInfo :hex="selectedHex" />
     </div>
     <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
       <g v-for="hex in enrichedHexes" :key="hex.label">
         <!-- draw hexagon -->
         <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
           :fill="terrainColors[hex.terrain] || terrainColors.default" stroke="#000" stroke-width="1"
-          @click="selectHex(hex)" />
+          @click.stop="selectHex(hex)" />
         <!-- label -->
         <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
           {{ hex.label }}
@@ -24,29 +22,38 @@
 import { ref, onMounted, computed } from 'vue'
 import { fetchHexData } from '../services/sheetService'
 import { axialFromIndex } from '../utils/hexUtils'
+import HexInfo from './HexInfo.vue'
 
-// Make hexes clickable
+// ————————————————————————
+// Selection logic
+// ————————————————————————
 const selectedHex = ref(null)
 function selectHex(hex) {
   selectedHex.value = hex
 }
+function clearSelection() {
+  selectedHex.value = null
+}
 
-
-// Accept GM flag from parent
+// ————————————————————————
+// Accept props
+// ————————————————————————
 const props = defineProps({
   isGM: Boolean
 })
 
-// Spreadsheet data (assumed in spiral order)
+// ————————————————————————
+// Spreadsheet data
+// ————————————————————————
 const raw = ref([])
 onMounted(async () => {
   raw.value = await fetchHexData()
 })
 
-// Size of each hex
+// ————————————————————————
+// Hex geometry
+// ————————————————————————
 const hexSize = 30
-
-// Convert axial coordinates to pixel center (flat-top)
 function axialToPixel({ q, r }) {
   return {
     cx: hexSize * (1.5 * q),
@@ -54,7 +61,6 @@ function axialToPixel({ q, r }) {
   }
 }
 
-// Get six corner points of a hex
 function hexagonPoints(cx, cy) {
   const pts = []
   for (let i = 0; i < 6; i++) {
@@ -64,7 +70,9 @@ function hexagonPoints(cx, cy) {
   return pts
 }
 
-// Build hexes + enrich with sheet data
+// ————————————————————————
+// Enrich hexes
+// ————————————————————————
 const enrichedHexes = computed(() => {
   const count = 331 // radius 10 spiral
   return Array.from({ length: count }, (_, i) => {
@@ -81,7 +89,9 @@ const enrichedHexes = computed(() => {
   })
 })
 
-// Compute SVG bounds
+// ————————————————————————
+// Compute viewBox
+// ————————————————————————
 const all = enrichedHexes.value.flatMap(h => h.corners)
 const xs = all.map(p => p.x)
 const ys = all.map(p => p.y)
@@ -90,7 +100,9 @@ const minY = Math.min(...ys)
 const width = Math.max(...xs) - minX
 const height = Math.max(...ys) - minY
 
+// ————————————————————————
 // Color lookup
+// ————————————————————————
 const terrainColors = {
   forest: '#228B22',
   swamp: '#6B8E23',
@@ -120,7 +132,7 @@ const terrainColors = {
   box-sizing: border-box;
   text-align: left;
   border-bottom: 1px solid #ccc;
-  margin-bottom: .25rem;
+  margin-bottom: 0.25rem;
 }
 
 .hexmap-svg {
