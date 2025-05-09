@@ -1,5 +1,10 @@
 <template>
   <div class="hexmap-container">
+    <div class="hex-popup">
+      <div v-if="selectedHex">
+        Terrain: {{ selectedHex.terrain || 'Unknown' }}
+      </div>
+    </div>
     <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
       <g v-for="hex in enrichedHexes" :key="hex.label">
         <!-- draw hexagon -->
@@ -12,9 +17,6 @@
         </text>
       </g>
     </svg>
-    <div v-if="selectedHex" class="hex-popup">
-      Terrain: {{ selectedHex.terrain || 'Unknown' }}
-    </div>
   </div>
 </template>
 
@@ -103,18 +105,22 @@ const terrainColors = {
 <style scoped>
 .hexmap-container {
   width: 100%;
-  height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .hex-popup {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: blue;
-  border: 1px solid #ccc;
-  padding: 10px;
-  z-index: 10;
+  width: 100%;
+  background: #eee;
+  color: #333;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  box-sizing: border-box;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: .25rem;
 }
 
 .hexmap-svg {

@@ -1,8 +1,7 @@
 <template>
   <div id="app">
     <header class="app-header">
-      <h1>HexMapp</h1>
-      <p>{{ isGMView ? 'GM View' : '' }}</p>
+      <p>{{ isGMView ? 'HexMapp (GM View)' : 'HexMapp' }}</p>
     </header>
     <main class="app-main">
       <HexMap :isGM="isGMView" />
@@ -11,8 +10,8 @@
 </template>
 
 <script setup>
-import { useRoute } from 'vue-router'
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import HexMap from './components/HexMap.vue'
 
 const route = useRoute()
@@ -21,16 +20,26 @@ const isGMView = computed(() => route.path.startsWith('/gm'))
 
 <style>
 #app {
-  max-width: none;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  /* Stack vertically */
+  height: 100vh;
 }
 
-h1 {
-  margin: 0 0 1rem;
-  font-size: 20pt;
+.app-header {
+  flex: 0 0 auto;
+  padding: .1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* or center if you want center-aligned text */
+  gap: 0.1rem;
 }
 
-body {
-  margin: 0;
+.app-main {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 </style>
