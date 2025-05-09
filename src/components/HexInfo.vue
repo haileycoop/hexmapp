@@ -1,13 +1,16 @@
 <template>
   <div class="hex-info">
-    <p v-if="hex">Terrain: {{ hex.terrain || 'Unknown' }}</p>
-    <p v-else>Click any hex</p>
+    <div><strong>Hex:</strong> {{ hex?.label || '—' }}</div>
+    <div><strong>Terrain:</strong> {{ hex?.terrain || 'Unknown' }}</div>
+    <div><strong>Notes:</strong> {{ hex?.terrain ? hex.playerNotes || '' : '' }}</div>
+    <div v-if="isGM"><strong>GM Notes:</strong> {{ hex?.gmNotes || '' }}</div>
   </div>
 </template>
 
 <script setup>
 const props = defineProps({
-  hex: Object
+  hex: Object,
+  isGM: Boolean
 })
 </script>
 

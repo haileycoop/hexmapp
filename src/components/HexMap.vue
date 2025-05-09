@@ -1,7 +1,7 @@
 <template>
   <div class="hexmap-container" @click="clearSelection">
     <div class="hex-popup">
-      <HexInfo :hex="selectedHex" />
+      <HexInfo :hex="selectedHex" :isGM="props.isGM" />
     </div>
     <svg :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet" class="hexmap-svg">
       <g v-for="hex in enrichedHexes" :key="hex.label">
@@ -84,7 +84,9 @@ const enrichedHexes = computed(() => {
     return {
       cx, cy, corners,
       label: row.hex || `${i}`,
-      terrain: props.isGM || visible ? row.terrain : undefined
+      terrain: props.isGM || visible ? row.terrain : undefined,
+      playerNotes: props.isGM || visible ? row.playerNotes : '',
+      gmNotes: props.isGM ? row.gmNotes || '' : ''
     }
   })
 })
