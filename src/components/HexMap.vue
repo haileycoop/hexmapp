@@ -189,7 +189,10 @@ function insetCorners(corners, scale = 0.92) {
 }
 
 .hex-sidebar {
+  display: flex;
   flex: 0 0 20vw;
+  flex-direction: column;
+  align-items: stretch;
   /* start as 20% of the screen width */
   max-width: 300px;
   /* cap it so it doesn't get huge */

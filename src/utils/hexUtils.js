@@ -54,9 +54,6 @@ const _SPIRAL = (() => {
     // compute small-angle from “straight up” N (0,-1)
     const aPx = axialToPixel(A)
     const bPx = axialToPixel(B)
-    // const angleA = Math.atan2(aPx.cx, -aPx.cy)
-    // const angleB = Math.atan2(bPx.cx, -bPx.cy)
-    // normalize into [0..2π) so North (0) comes first
     const rawA = Math.atan2(aPx.cx, -aPx.cy)
     const rawB = Math.atan2(bPx.cx, -bPx.cy)
     const angleA = rawA < 0 ? rawA + 2 * Math.PI : rawA
