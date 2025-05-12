@@ -12,8 +12,11 @@
             height="1536" />
           <g v-for="hex in enrichedHexes" :key="hex.label">
             <!-- Main hex -->
-            <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')"
-              :fill="hex.terrain ? 'transparent' : '#ccc'" class="hexagon" @click.stop="selectHex(hex)" />
+            <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')" :fill="hex.visibility === 'fog'
+              ? '#919191'
+              : hex.visibility === 'terrain'
+                ? (terrainColors[hex.terrain] || terrainColors.default)
+                : 'transparent'" class="hexagon" @click.stop="selectHex(hex)" />
             <!-- Inset highlight -->
             <polygon v-if="hex.label === selectedHex?.label"
               :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
@@ -121,13 +124,17 @@ const enrichedHexes = computed(() => {
     const { cx, cy } = axialToPixel(axial)
     const corners = hexagonPoints(cx, cy)
     const row = raw.value[i] || {}
-    const visible = row.visible === 'TRUE'
+    const rawVisibility = (row.visible || '').toLowerCase().trim()
+    const visibility = ['fog', 'terrain', 'clear'].includes(rawVisibility) ? rawVisibility : 'fog'
+
+
     return {
       cx, cy, corners,
       label: row.hex || `${i}`,
-      terrain: props.isGM || visible ? row.terrain : undefined,
-      playerNotes: props.isGM || visible ? row.playerNotes : '',
-      gmNotes: props.isGM ? row.gmNotes || '' : ''
+      terrain: (props.isGM || visibility !== 'fog') ? row.terrain : undefined,
+      playerNotes: (props.isGM || visibility !== 'fog') ? row.playerNotes : '',
+      gmNotes: props.isGM ? row.gmNotes || '' : '',
+      visibility // <- add visibility field directly
     }
   })
 })
@@ -154,13 +161,13 @@ const height = Math.max(...ys) - minY
 // Color lookup
 // ————————————————————————
 const terrainColors = {
-  forest: '#228B22',
-  swamp: '#6B8E23',
-  plains: '#F4A460',
-  desert: '#EDC9AF',
-  mountains: '#A9A9A9',
-  water: '#1E90FF',
-  default: '#CCCCCC'
+  forest: '#625729',
+  hills: '#998F50',
+  plains: '#A0B260',
+  foothills: '#907641',
+  mountains: '#4E4025',
+  water: '#7F9B9F',
+  default: '#919191'
 }
 
 // ————————————————————————
@@ -230,8 +237,11 @@ function insetCorners(corners, scale = 0.92) {
 }
 
 .hex-label {
-  font-size: 0.6em;
-  fill: #000;
+  font-size: 0.8em;
+  fill: white;
+  stroke: black;
+  stroke-width: 0.5px;
+  paint-order: stroke;
   pointer-events: none;
 }
 
