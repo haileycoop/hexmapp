@@ -30,7 +30,7 @@
 // Pulling in hex data, geometry math, props
 // ————————————————————————
 
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { fetchHexData } from '../services/sheetService'
 import {
   axialToPixel,
@@ -39,7 +39,6 @@ import {
   axialDistance,
   TOTAL_HEX_COUNT
 } from '../utils/hexUtils'
-import { watchEffect } from 'vue'
 
 const props = defineProps({
   isGM: Boolean,
@@ -142,30 +141,51 @@ const mapReady = computed(() => {
 // Pan & zoom logic
 // ————————————————————————
 
+// ————————————————————————
+// Pan & zoom logic
+// ————————————————————————
+
 const wrapperRef = ref(null)
+const svgRef = ref(null)
 
 const defaultZoom = 2
 const zoom = ref(defaultZoom)
-
-const svgRef = ref(null)
 const pan = ref({ x: 0, y: 0 })
 
-let hasCentered = false
+const hasCentered = ref(false)
+let resizeTimeout = null
 
-watchEffect(() => {
-  if (hasCentered) return
+onMounted(() => {
+  const handleResize = () => {
+    clearTimeout(resizeTimeout)
 
-  const wrapper = wrapperRef.value
-  const { centerX, centerY } = mapGeometry.value
-  if (!wrapper || enrichedHexes.value.length === 0) return
+    resizeTimeout = setTimeout(() => {
+      if (hasCentered.value) return
 
-  const wrapperWidth = wrapper.clientWidth
-  const wrapperHeight = wrapper.clientHeight
+      const wrapper = wrapperRef.value
+      const geometry = mapGeometry.value
+      if (!wrapper || enrichedHexes.value.length === 0 || !geometry) return
 
-  pan.value.x = (wrapperWidth / 2) / zoom.value - centerX
-  pan.value.y = (wrapperHeight / 2) / zoom.value - centerY
+      const { centerX, centerY } = geometry
+      const wrapperWidth = wrapper.clientWidth
+      const wrapperHeight = wrapper.clientHeight
 
-  hasCentered = true
+      pan.value.x = (wrapperWidth / 2) / zoom.value - centerX
+      pan.value.y = (wrapperHeight / 2) / zoom.value - centerY
+
+      hasCentered.value = true
+    }, 200) // wait 200ms after last resize
+  }
+
+  window.addEventListener('resize', handleResize)
+
+  // Initial call
+  handleResize()
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
+    clearTimeout(resizeTimeout)
+  })
 })
 
 let isPanning = false
