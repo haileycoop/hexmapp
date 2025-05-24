@@ -186,40 +186,6 @@ function insetCorners(corners, scale = 0.92) {
 </script>
 
 <style scoped>
-.hexmap-container {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: calc(100vh - 3rem);
-  /* minus header */
-  overflow: hidden;
-}
-
-.hex-sidebar {
-  display: flex;
-  flex: 0 0 20vw;
-  flex-direction: column;
-  align-items: stretch;
-  /* start as 20% of the screen width */
-  max-width: 300px;
-  /* cap it so it doesn't get huge */
-  min-width: 100px;
-  /* keeps it readable on small screens */
-  background: #eee;
-  color: #333;
-  font-size: 1rem;
-  padding: 1rem;
-  box-sizing: border-box;
-  border-right: 1px solid #ccc;
-  overflow-y: auto;
-}
-
-.hexmap-svg-wrapper {
-  width: 75%;
-  height: 100%;
-  overflow: hidden;
-}
-
 .hexmap-svg {
   cursor: grab;
   user-select: none;
