@@ -1,10 +1,13 @@
 <template>
   <div id="app">
-    <div class="layout-header-left">
-      <p>{{ isGMView ? 'HexMapp (GM View)' : 'HexMapp' }}</p>
-    </div>
-    <div class="layout-header-right">
-      <!-- TODO: add current date feature here -->
+    <div class="layout-header">
+      <div class="layout-header-left">
+        <p>{{ isGMView ? 'Nightsong (GM View)' : 'Nightsong' }}</p>
+      </div>
+      <div class="layout-header-right">
+        <!-- TODO: add current date feature here -->
+        <p>X</p>
+      </div>
     </div>
     <div class="layout-main-small">
       <HexInfo :hex="selectedHex" :isGM="isGMView" />

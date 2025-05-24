@@ -1,7 +1,7 @@
 <template>
   <div class="hexmap-svg-wrapper" ref="wrapperRef" @click="clearSelection">
-    <svg ref="svgRef" :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet"
-      class="hexmap-svg" @mousedown="startPan" @mousemove="onPan" @mouseup="endPan" @mouseleave="endPan"
+    <svg v-if="viewBoxString" ref="svgRef" :viewBox="viewBoxString" preserveAspectRatio="
+      xMidYMid meet" class="hexmap-svg" @mousedown="startPan" @mousemove="onPan" @mouseup="endPan" @mouseleave="endPan"
       @wheel.prevent="onZoom">
       <g :transform="`translate(${pan.x}, ${pan.y}) scale(${zoom})`">
         <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
@@ -39,7 +39,6 @@ import {
   axialDistance,
   TOTAL_HEX_COUNT
 } from '../utils/hexUtils'
-import { nextTick } from 'vue'
 import { watchEffect } from 'vue'
 
 const props = defineProps({
@@ -68,6 +67,78 @@ const originInImage = { x: 1290, y: 816 }
 const { cx: cx0, cy: cy0 } = axialToPixel({ q: 0, r: 0 })
 
 // ————————————————————————
+// Spreadsheet data + enriched hexes
+// ————————————————————————
+
+const raw = ref([])
+onMounted(async () => {
+  raw.value = await fetchHexData()
+})
+
+const enrichedHexes = computed(() => {
+  return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
+    const axial = axialFromIndex(i)
+    const { cx, cy } = axialToPixel(axial)
+    const corners = hexagonPoints(cx, cy)
+    const row = raw.value[i] || {}
+    const rawVisibility = (row.visible || '').toLowerCase().trim()
+    const visibility = ['fog', 'terrain', 'clear'].includes(rawVisibility) ? rawVisibility : 'fog'
+
+    return {
+      cx, cy, corners,
+      label: row.hex || `${i}`,
+      terrain: (props.isGM || visibility !== 'fog') ? row.terrain : undefined,
+      playerNotes: (props.isGM || visibility !== 'fog') ? row.playerNotes || '' : '',
+      visibility
+    }
+  })
+})
+
+// ————————————————————————
+// Viewbox calculation
+// ————————————————————————
+
+const radiusForView = 10
+
+const mapGeometry = computed(() => {
+  const coreHexes = enrichedHexes.value.filter((_, i) =>
+    axialDistance(axialFromIndex(i)) <= radiusForView
+  )
+
+  const all = coreHexes.flatMap(h => h.corners)
+  const xs = all.map(p => p.x)
+  const ys = all.map(p => p.y)
+
+  const minX = Math.min(...xs)
+  const minY = Math.min(...ys)
+  const width = Math.max(...xs) - minX
+  const height = Math.max(...ys) - minY
+  const centerX = minX + width / 2
+  const centerY = minY + height / 2
+
+  return { minX, minY, width, height, centerX, centerY }
+})
+
+// ————————————————————————
+// ViewBox string (for safe rendering)
+// ————————————————————————
+
+const viewBoxString = computed(() => {
+  const g = mapGeometry.value
+  if (!g || !Number.isFinite(g.minX)) return ''
+  return `${g.minX} ${g.minY} ${g.width} ${g.height}`
+})
+
+// ————————————————————————
+// Template guards
+// ————————————————————————
+
+const mapReady = computed(() => {
+  const g = mapGeometry.value
+  return !!g && Number.isFinite(g.minX) && Number.isFinite(g.minY)
+})
+
+// ————————————————————————
 // Pan & zoom logic
 // ————————————————————————
 
@@ -81,23 +152,18 @@ const pan = ref({ x: 0, y: 0 })
 
 let hasCentered = false
 
-// const centerX = minX + width / 2
-// const centerY = minY + height / 2
-
 watchEffect(() => {
   if (hasCentered) return
 
   const wrapper = wrapperRef.value
+  const { centerX, centerY } = mapGeometry.value
   if (!wrapper || enrichedHexes.value.length === 0) return
 
   const wrapperWidth = wrapper.clientWidth
   const wrapperHeight = wrapper.clientHeight
 
-  pan.value.x = (wrapperWidth / 2) / zoom.value - cx0
-  pan.value.y = (wrapperHeight / 2) / zoom.value - cy0
-
-  // pan.value.x = (wrapperWidth / 2) / zoom.value - centerX
-  // pan.value.y = (wrapperHeight / 2) / zoom.value - centerY
+  pan.value.x = (wrapperWidth / 2) / zoom.value - centerX
+  pan.value.y = (wrapperHeight / 2) / zoom.value - centerY
 
   hasCentered = true
 })
@@ -128,50 +194,6 @@ function onZoom(e) {
   const scaleFactor = 1 + direction * 0.1
   zoom.value = Math.min(Math.max(zoom.value * scaleFactor, 0.2), 4)
 }
-
-// ————————————————————————
-// Spreadsheet data + enriched hexes
-// ————————————————————————
-
-const raw = ref([])
-onMounted(async () => {
-  raw.value = await fetchHexData()
-})
-
-const enrichedHexes = computed(() => {
-  return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
-    const axial = axialFromIndex(i)
-    const { cx, cy } = axialToPixel(axial)
-    const corners = hexagonPoints(cx, cy)
-    const row = raw.value[i] || {}
-    const rawVisibility = (row.visible || '').toLowerCase().trim()
-    const visibility = ['fog', 'terrain', 'clear'].includes(rawVisibility) ? rawVisibility : 'fog'
-
-    return {
-      cx, cy, corners,
-      label: row.hex || `${i}`,
-      terrain: (props.isGM || visibility !== 'fog') ? row.terrain : undefined,
-      visibility
-    }
-  })
-})
-
-// ————————————————————————
-// Viewbox calculation
-// ————————————————————————
-
-const radiusForView = 10
-const coreHexes = enrichedHexes.value.filter((_, i) =>
-  axialDistance(axialFromIndex(i)) <= radiusForView
-)
-
-const all = coreHexes.flatMap(h => h.corners)
-const xs = all.map(p => p.x)
-const ys = all.map(p => p.y)
-const minX = Math.min(...xs)
-const minY = Math.min(...ys)
-const width = Math.max(...xs) - minX
-const height = Math.max(...ys) - minY
 
 // ————————————————————————
 // Color map
@@ -216,10 +238,9 @@ function insetCorners(corners, scale = 0.92) {
 .hexmap-svg-wrapper {
   width: 100%;
   height: 100%;
-  overflow: auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  overflow: hidden;
+  display: block;
+  position: relative;
 }
 
 .hex-label {
