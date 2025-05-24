@@ -4,7 +4,9 @@ export const useMainStore = defineStore('main', {
   state: () => ({
     isGM: false,
     selectedHex: null,
-    showFog: true
+    showFog: true,
+    hexes: [],
+    movements: []
   }),
   actions: {
     unlockGM(key) {
@@ -28,6 +30,14 @@ export const useMainStore = defineStore('main', {
     },
     toggleFog() {
       this.showFog = !this.showFog
-    }    
+    },
+    async loadHexData() {
+      const { fetchHexData } = await import('../services/sheetService')
+      this.hexes = await fetchHexData()
+    },
+    async loadMovementData() {
+      const { fetchMovementData } = await import('../services/sheetService')
+      this.movements = await fetchMovementData()
+    }
   }
 })

@@ -7,14 +7,23 @@
       <g :transform="`translate(${pan.x}, ${pan.y}) scale(${zoom})`">
         <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
           height="1536" />
+        <!-- Display of each hex -->
         <g v-for="hex in enrichedHexes" :key="hex.label">
+          <!-- Manage hex fill -->
           <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')" :fill="getFill(hex)" class="hexagon"
             @click.stop="selectHex(hex)" />
+          <!-- Manage hex highlight -->
           <polygon v-if="hex.label === props.selectedHex?.label"
             :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
             @click.stop="selectHex(hex)" />
+          <!-- Display hex label -->
           <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
             {{ hex.label }}
+          </text>
+          <!-- Display party location icon -->
+          <text v-if="hex.label === currentPartyHex" :x="hex.cx" :y="hex.cy - 10" text-anchor="middle"
+            class="party-icon">
+            🚩
           </text>
         </g>
       </g>
@@ -29,7 +38,6 @@
 // ————————————————————————
 
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { fetchHexData } from '../services/sheetService'
 import {
   axialToPixel,
   hexagonPoints,
@@ -41,6 +49,15 @@ import {
 import { useMainStore } from '../stores/store'
 
 const store = useMainStore()
+
+const raw = computed(() => store.hexes)
+
+const currentPartyHex = computed(() => {
+  const latest = [...store.movements]
+    .filter(m => m.faction === 'The Party')
+    .pop()
+  return latest?.hex || null
+})
 
 const props = defineProps({
   isGM: Boolean,
@@ -70,11 +87,6 @@ const { cx: cx0, cy: cy0 } = axialToPixel({ q: 0, r: 0 })
 // ————————————————————————
 // Spreadsheet data + enriched hexes
 // ————————————————————————
-
-const raw = ref([])
-onMounted(async () => {
-  raw.value = await fetchHexData()
-})
 
 const enrichedHexes = computed(() => {
   return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
@@ -408,7 +420,6 @@ function insetCorners(corners, scale = 0.92) {
   }))
 }
 
-
 </script>
 
 <style scoped>
@@ -448,6 +459,11 @@ function insetCorners(corners, scale = 0.92) {
   fill: none;
   stroke: #ff6600;
   stroke-width: 2;
+  pointer-events: none;
+}
+
+.party-icon {
+  font-size: 1rem;
   pointer-events: none;
 }
 </style>

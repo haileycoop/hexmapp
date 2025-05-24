@@ -6,6 +6,10 @@
         <p>{{ isGMView ? 'Nightsong (GM View)' : 'Nightsong' }}</p>
       </div>
       <div class="layout-header-right">
+        <!-- Movement Info toggle button -->
+        <button @click="showMovements = !showMovements" :class="{ active: showMovements }" title="Toggle movement log">
+          🗺️
+        </button>
         <!-- Fog toggle button (GM only) -->
         <button v-if="isGMView" @click="store.toggleFog" :class="['fog-toggle', { active: store.showFog }]"
           :title="store.showFog ? 'Hide fog' : 'Show fog'">
@@ -16,7 +20,8 @@
       </div>
     </div>
     <div class="layout-main-small">
-      <HexInfo :hex="selectedHex" :isGM="isGMView" />
+      <HexInfo v-if="!showMovements" :hex="selectedHex" :isGM="isGMView" />
+      <MovementInfo v-else :movements="partyMovements" @selectHex="store.setSelectedHex" />
     </div>
     <div class="layout-main-large">
       <HexMap :isGM="isGMView" :selectedHex="selectedHex" @update:selectedHex="store.setSelectedHex" />
@@ -52,20 +57,29 @@ import { useMainStore } from './stores/store'
 import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import HexInfo from './components/HexInfo.vue'
 import HexMap from './components/HexMap.vue'
+import MovementInfo from './components/MovementInfo.vue'
 
 const store = useMainStore()
 const showModal = ref(false)
 const key = ref('')
 const gmInput = ref(null)
+const showMovements = ref(false)
 
 // Load GM state on mount
-onMounted(() => {
+onMounted(async () => {
   store.loadGMFromStorage()
+  await store.loadHexData()
+  await store.loadMovementData()
+  console.log('✅ Movements loaded:', store.movements)
 })
 
 // Computed helpers
 const selectedHex = computed(() => store.selectedHex)
 const isGMView = computed(() => store.isGM)
+const partyMovements = computed(() =>
+  store.movements.filter(m => m.faction === 'The Party')
+)
+
 
 // ————————————————————————
 // GM View Unlock / Reset
