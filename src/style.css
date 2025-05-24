@@ -115,7 +115,8 @@ button:focus-visible {
   overflow: hidden;
 }
 
-@media (max-width: 800px) {
+@media (orientation: portrait),
+(not (orientation: portrait)) and (max-width: 600px) {
   #app {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
