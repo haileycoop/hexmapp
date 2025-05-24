@@ -11,7 +11,8 @@
 import { ref } from 'vue'
 
 const props = defineProps({
-  movements: Array
+  movements: Array,
+  allHexes: Array
 })
 
 const emit = defineEmits(['selectHex'])
@@ -20,28 +21,21 @@ const selectedIndex = ref(null)
 
 function select(index) {
   selectedIndex.value = index
-  emit('selectHex', props.movements[index].hex)
+
+  const label = props.movements[index]?.hex?.trim?.()
+
+  // 🔍 TEMP LOGS for debugging
+  // console.log('🔍 Looking for hex with label:', label)
+  // console.log('📦 Available hex labels:', props.allHexes.map(h => `[${h.label}]`).join(', '))
+
+  const hex = props.allHexes.find(h => h.label?.trim?.() === label)
+
+  if (!hex) {
+    console.warn('❌ No matching hex found for movement:', label)
+  } else {
+    emit('selectHex', hex)
+  }
 }
+
+
 </script>
-
-<style scoped>
-.movement-log {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.movement-entry {
-  padding: 0.5rem;
-  font-size: 0.6rem;
-  background: #f4f4f4;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.movement-entry.active {
-  background: #d0eaff;
-  border-color: #3399ff;
-}
-</style>

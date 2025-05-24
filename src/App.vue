@@ -7,8 +7,9 @@
       </div>
       <div class="layout-header-right">
         <!-- Movement Info toggle button -->
-        <button @click="showMovements = !showMovements" :class="{ active: showMovements }" title="Toggle movement log">
-          🗺️
+        <button @click="showMovements = !showMovements" :class="{ active: showMovements }"
+          :title="showMovements ? 'View Hex Info' : 'View Movement Log'" aria-label="Toggle info panel">
+          {{ showMovements ? '🥾' : '🧭' }}
         </button>
         <!-- Fog toggle button (GM only) -->
         <button v-if="isGMView" @click="store.toggleFog" :class="['fog-toggle', { active: store.showFog }]"
@@ -21,7 +22,8 @@
     </div>
     <div class="layout-main-small">
       <HexInfo v-if="!showMovements" :hex="selectedHex" :isGM="isGMView" />
-      <MovementInfo v-else :movements="partyMovements" @selectHex="store.setSelectedHex" />
+      <MovementInfo v-else :movements="partyMovements" :allHexes="store.enrichedHexes"
+        @selectHex="hex => store.setSelectedHex(hex, { fromMovement: true })" />
     </div>
     <div class="layout-main-large">
       <HexMap :isGM="isGMView" :selectedHex="selectedHex" @update:selectedHex="store.setSelectedHex" />
@@ -70,7 +72,7 @@ onMounted(async () => {
   store.loadGMFromStorage()
   await store.loadHexData()
   await store.loadMovementData()
-  console.log('✅ Movements loaded:', store.movements)
+  // console.log('✅ Movements loaded:', store.movements)
 })
 
 // Computed helpers

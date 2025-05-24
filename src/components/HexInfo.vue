@@ -19,30 +19,3 @@ const props = defineProps({
   isGM: Boolean
 })
 </script>
-
-<style scoped>
-.hex-info {
-  width: 100%;
-  background: #eee;
-  color: #333;
-  font-size: .5rem;
-  padding: 0.05rem .05rem;
-  text-align: left;
-  white-space: normal;
-  /* allow line wrapping */
-  word-wrap: break-word;
-  /* break long words if needed */
-  overflow-wrap: break-word;
-}
-
-.hex-info>div {
-  width: 100%;
-}
-
-.note-text {
-  margin: 0.2rem 0 0.5rem 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-width: 100%;
-}
-</style>

@@ -21,9 +21,11 @@
             {{ hex.label }}
           </text>
           <!-- Display party location icon -->
-          <text v-if="hex.label === currentPartyHex" :x="hex.cx" :y="hex.cy - 10" text-anchor="middle"
+          <circle v-if="hex.label === currentPartyHex" :cx="hex.cx" :cy="hex.cy - 21" r="12" fill="white"
+            stroke-width="1" />
+          <text v-if="hex.label === currentPartyHex" :x="hex.cx" :y="hex.cy - 16" text-anchor="middle"
             class="party-icon">
-            🚩
+            🏕️
           </text>
         </g>
       </g>
@@ -37,7 +39,7 @@
 // Imports and props
 // ————————————————————————
 
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import {
   axialToPixel,
   hexagonPoints,
@@ -50,7 +52,7 @@ import { useMainStore } from '../stores/store'
 
 const store = useMainStore()
 
-const raw = computed(() => store.hexes)
+const enrichedHexes = computed(() => store.enrichedHexes)
 
 const currentPartyHex = computed(() => {
   const latest = [...store.movements]
@@ -78,34 +80,17 @@ function clearSelection() {
   emit('update:selectedHex', null)
 }
 
+// DEBUG TOOL
+// watch(() => props.selectedHex, (hex) => {
+//   console.log('🟠 Selected hex in map:', hex?.label)
+// })
+
+
 // ————————————————————————
 // Centering background image
 // ————————————————————————
 const originInImage = { x: 1290, y: 816 }
 const { cx: cx0, cy: cy0 } = axialToPixel({ q: 0, r: 0 })
-
-// ————————————————————————
-// Spreadsheet data + enriched hexes
-// ————————————————————————
-
-const enrichedHexes = computed(() => {
-  return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
-    const axial = axialFromIndex(i)
-    const { cx, cy } = axialToPixel(axial)
-    const corners = hexagonPoints(cx, cy)
-    const row = raw.value[i] || {}
-    const rawVisibility = (row.visible || '').toLowerCase().trim()
-    const visibility = ['fog', 'terrain', 'clear'].includes(rawVisibility) ? rawVisibility : 'fog'
-
-    return {
-      cx, cy, corners,
-      label: row.hex || `${i}`,
-      terrain: (props.isGM || visibility !== 'fog') ? row.terrain : undefined,
-      playerNotes: (props.isGM || visibility !== 'fog') ? row.playerNotes || '' : '',
-      visibility
-    }
-  })
-})
 
 // ————————————————————————
 // Viewbox calculation
@@ -368,6 +353,57 @@ function endTouchPan() {
 }
 
 // ————————————————————————
+// Pan to hex
+// ————————————————————————
+
+watch(() => props.selectedHex, (hex) => {
+  if (hex && store.selectedViaMovement) {
+    panToHex(hex)
+    store.clearSelectedViaMovement()
+  }
+})
+
+function panToHex(hex) {
+  animatePanTo(hex.cx, hex.cy)
+}
+
+function animatePanTo(targetCx, targetCy, duration = 400) {
+  const wrapper = wrapperRef.value
+  if (!wrapper) return
+
+  const startX = pan.value.x
+  const startY = pan.value.y
+
+  const wrapperWidth = wrapper.clientWidth
+  const wrapperHeight = wrapper.clientHeight
+
+  // Use a smaller offset to center higher up on small screens (e.g. 60% down)
+  const anchorX = wrapperWidth * 0.5
+  const anchorY = wrapperHeight * 0.5
+
+  const targetX = anchorX / zoom.value - targetCx
+  const targetY = anchorY / zoom.value - targetCy
+
+  const startTime = performance.now()
+
+  function animate(now) {
+    const elapsed = now - startTime
+    const t = Math.min(elapsed / duration, 1)
+    const ease = 1 - Math.pow(1 - t, 3)
+
+    pan.value.x = startX + (targetX - startX) * ease
+    pan.value.y = startY + (targetY - startY) * ease
+
+    if (t < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+
+  requestAnimationFrame(animate)
+}
+
+
+// ————————————————————————
 // Color map & fill management
 // ————————————————————————
 
@@ -463,7 +499,8 @@ function insetCorners(corners, scale = 0.92) {
 }
 
 .party-icon {
-  font-size: 1rem;
+  font-size: 1.5rem;
+  font-weight: bold;
   pointer-events: none;
 }
 </style>

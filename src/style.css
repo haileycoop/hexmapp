@@ -190,15 +190,68 @@ button:focus-visible {
   padding: 0.6rem;
 }
 
+.hex-info {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hex-info strong {
+  font-weight: 600;
+}
+
+.hex-info .note-text {
+  margin: 0.25rem 0 0 0;
+  white-space: pre-wrap;
+}
+
+.movement-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.movement-entry {
+  padding: 0.5rem;
+  font-size: 0.6rem;
+  background: #f4f4f4;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.movement-entry.active {
+  background: #d0eaff;
+  border-color: #3399ff;
+}
+
 @media (orientation: portrait),
 (not (orientation: portrait)) and (max-width: 600px) {
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto 30% 70%;
     grid-template-areas:
       "header"
       "main-small"
       "main-large";
+  }
+
+  .layout-header {
+    font-size: 1.3rem;
+  }
+
+  button {
+    font-size: 1rem;
+  }
+
+  .hex-info {
+    font-size: 1rem;
+  }
+
+  .movement-entry {
+    font-size: 1rem;
   }
 }
 
