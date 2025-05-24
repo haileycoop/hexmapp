@@ -1,55 +1,106 @@
 <template>
-  <div class="hexmap-container">
-    <div class="hex-sidebar">
-      <HexInfo :hex="selectedHex" :isGM="props.isGM" />
-    </div>
-    <div class="hexmap-svg-wrapper" @click="clearSelection">
-      <svg ref="svgRef" :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet"
-        class="hexmap-svg" @mousedown="startPan" @mousemove="onPan" @mouseup="endPan" @mouseleave="endPan"
-        @wheel.prevent="onZoom" width="1500" height="1500">
-        <g :transform="`translate(${pan.x}, ${pan.y}) scale(${zoom})`">
-          <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
-            height="1536" />
-          <g v-for="hex in enrichedHexes" :key="hex.label">
-            <!-- Main hex -->
-            <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')" :fill="hex.visibility === 'fog'
-              ? '#919191'
-              : hex.visibility === 'terrain'
-                ? (terrainColors[hex.terrain] || terrainColors.default)
-                : 'transparent'" class="hexagon" @click.stop="selectHex(hex)" />
-            <!-- Inset highlight -->
-            <polygon v-if="hex.label === selectedHex?.label"
-              :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
-              @click.stop="selectHex(hex)" />
-            <!-- Label -->
-            <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
-              {{ hex.label }}
-            </text>
-          </g>
+  <div class="hexmap-svg-wrapper" ref="wrapperRef" @click="clearSelection">
+    <svg ref="svgRef" :viewBox="`${minX} ${minY} ${width} ${height}`" preserveAspectRatio="xMidYMid meet"
+      class="hexmap-svg" @mousedown="startPan" @mousemove="onPan" @mouseup="endPan" @mouseleave="endPan"
+      @wheel.prevent="onZoom">
+      <g :transform="`translate(${pan.x}, ${pan.y}) scale(${zoom})`">
+        <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
+          height="1536" />
+        <g v-for="hex in enrichedHexes" :key="hex.label">
+          <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')" :fill="hex.visibility === 'fog'
+            ? '#919191'
+            : hex.visibility === 'terrain'
+              ? (terrainColors[hex.terrain] || terrainColors.default)
+              : 'transparent'" class="hexagon" @click.stop="selectHex(hex)" />
+          <polygon v-if="hex.label === props.selectedHex?.label"
+            :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
+            @click.stop="selectHex(hex)" />
+          <text :x="hex.cx" :y="hex.cy" text-anchor="middle" dominant-baseline="middle" class="hex-label">
+            {{ hex.label }}
+          </text>
         </g>
-
-      </svg>
-    </div>
+      </g>
+    </svg>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { fetchHexData } from '../services/sheetService'
-import HexInfo from './HexInfo.vue'
 
 // ————————————————————————
-// Backdrop management
+// Pulling in hex data, geometry math, props
 // ————————————————————————
-const originInImage = { x: 1290, y: 816 } // center of a 2048x1536 image
+
+import { ref, onMounted, computed } from 'vue'
+import { fetchHexData } from '../services/sheetService'
+import {
+  axialToPixel,
+  hexagonPoints,
+  axialFromIndex,
+  axialDistance,
+  TOTAL_HEX_COUNT
+} from '../utils/hexUtils'
+import { nextTick } from 'vue'
+import { watchEffect } from 'vue'
+
+const props = defineProps({
+  isGM: Boolean,
+  selectedHex: Object
+})
+
+// ————————————————————————
+// Update the selected hex
+// ————————————————————————
+
+const emit = defineEmits(['update:selectedHex'])
+
+function selectHex(hex) {
+  emit('update:selectedHex', hex)
+}
+
+function clearSelection() {
+  emit('update:selectedHex', null)
+}
+
+// ————————————————————————
+// Centering background image
+// ————————————————————————
+const originInImage = { x: 1290, y: 816 }
 const { cx: cx0, cy: cy0 } = axialToPixel({ q: 0, r: 0 })
 
 // ————————————————————————
 // Pan & zoom logic
 // ————————————————————————
+
+const wrapperRef = ref(null)
+
+const defaultZoom = 2
+const zoom = ref(defaultZoom)
+
 const svgRef = ref(null)
 const pan = ref({ x: 0, y: 0 })
-const zoom = ref(1)
+
+let hasCentered = false
+
+// const centerX = minX + width / 2
+// const centerY = minY + height / 2
+
+watchEffect(() => {
+  if (hasCentered) return
+
+  const wrapper = wrapperRef.value
+  if (!wrapper || enrichedHexes.value.length === 0) return
+
+  const wrapperWidth = wrapper.clientWidth
+  const wrapperHeight = wrapper.clientHeight
+
+  pan.value.x = (wrapperWidth / 2) / zoom.value - cx0
+  pan.value.y = (wrapperHeight / 2) / zoom.value - cy0
+
+  // pan.value.x = (wrapperWidth / 2) / zoom.value - centerX
+  // pan.value.y = (wrapperHeight / 2) / zoom.value - centerY
+
+  hasCentered = true
+})
 
 let isPanning = false
 let lastPos = { x: 0, y: 0 }
@@ -79,45 +130,14 @@ function onZoom(e) {
 }
 
 // ————————————————————————
-// Selection logic
+// Spreadsheet data + enriched hexes
 // ————————————————————————
-const selectedHex = ref(null)
-function selectHex(hex) {
-  selectedHex.value = hex
-}
-function clearSelection() {
-  selectedHex.value = null
-}
 
-// ————————————————————————
-// Accept props
-// ————————————————————————
-const props = defineProps({
-  isGM: Boolean
-})
-
-// ————————————————————————
-// Spreadsheet data
-// ————————————————————————
 const raw = ref([])
 onMounted(async () => {
   raw.value = await fetchHexData()
 })
 
-// ————————————————————————
-// Hex geometry
-// ————————————————————————
-import {
-  hexSize,
-  axialToPixel,
-  hexagonPoints,
-  axialFromIndex,
-  TOTAL_HEX_COUNT
-} from '../utils/hexUtils'
-
-// ————————————————————————
-// Enrich hexes
-// ————————————————————————
 const enrichedHexes = computed(() => {
   return Array.from({ length: TOTAL_HEX_COUNT }, (_, i) => {
     const axial = axialFromIndex(i)
@@ -127,22 +147,18 @@ const enrichedHexes = computed(() => {
     const rawVisibility = (row.visible || '').toLowerCase().trim()
     const visibility = ['fog', 'terrain', 'clear'].includes(rawVisibility) ? rawVisibility : 'fog'
 
-
     return {
       cx, cy, corners,
       label: row.hex || `${i}`,
       terrain: (props.isGM || visibility !== 'fog') ? row.terrain : undefined,
-      playerNotes: (props.isGM || visibility !== 'fog') ? row.playerNotes : '',
-      gmNotes: props.isGM ? row.gmNotes || '' : '',
-      visibility // <- add visibility field directly
+      visibility
     }
   })
 })
 
 // ————————————————————————
-// Compute viewBox (only radius 10)
+// Viewbox calculation
 // ————————————————————————
-import { axialDistance } from '../utils/hexUtils'
 
 const radiusForView = 10
 const coreHexes = enrichedHexes.value.filter((_, i) =>
@@ -158,8 +174,9 @@ const width = Math.max(...xs) - minX
 const height = Math.max(...ys) - minY
 
 // ————————————————————————
-// Color lookup
+// Color map
 // ————————————————————————
+
 const terrainColors = {
   forest: '#625729',
   hills: '#998F50',
@@ -171,10 +188,10 @@ const terrainColors = {
 }
 
 // ————————————————————————
-// Selected hex highlight
+// Highlight helper (set stroke inside hex)
 // ————————————————————————
+
 function insetCorners(corners, scale = 0.92) {
-  // Shrink points towards the hex center
   const cx = corners.reduce((sum, p) => sum + p.x, 0) / 6
   const cy = corners.reduce((sum, p) => sum + p.y, 0) / 6
   return corners.map(p => ({
@@ -183,10 +200,13 @@ function insetCorners(corners, scale = 0.92) {
   }))
 }
 
+
 </script>
 
 <style scoped>
 .hexmap-svg {
+  width: 100%;
+  height: 100%;
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -194,7 +214,7 @@ function insetCorners(corners, scale = 0.92) {
 }
 
 .hexmap-svg-wrapper {
-  width: 75%;
+  width: 100%;
   height: 100%;
   overflow: auto;
   display: flex;
