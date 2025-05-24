@@ -27,7 +27,8 @@
         <template v-if="!isGMView">
           <form @submit.prevent="unlockGM">
             <label for="gm-key">Enter GM key</label>
-            <input id="gm-key" v-model="key" ref="gmInput" :autofocus="!isMobile" placeholder="e.g. silver-owl-78" />
+            <input id="gm-key" v-model="key" type="password" ref="gmInput" :autofocus="!isMobile"
+              placeholder="Spoilers inside..." autocomplete="off" autocorrect="off" spellcheck="false" />
             <div class="modal-buttons">
               <button type="submit">Unlock</button>
               <button type="button" @click="closeModal">Cancel</button>
