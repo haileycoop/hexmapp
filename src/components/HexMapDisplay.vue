@@ -2,7 +2,8 @@
   <div class="hexmap-svg-wrapper" ref="wrapperRef" @click="clearSelection">
     <svg v-if="viewBoxString" ref="svgRef" :viewBox="viewBoxString" preserveAspectRatio="
       xMidYMid meet" class="hexmap-svg" @mousedown="startPan" @mousemove="onPan" @mouseup="endPan" @mouseleave="endPan"
-      @wheel.prevent="onZoom">
+      @wheel.prevent="onZoom" @touchstart="startTouchPan" @touchmove="onTouchMove" @touchend="endTouchPan"
+      @touchcancel="endTouchPan">
       <g :transform="`translate(${pan.x}, ${pan.y}) scale(${zoom})`">
         <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
           height="1536" />
@@ -141,10 +142,6 @@ const mapReady = computed(() => {
 // Pan & zoom logic
 // ————————————————————————
 
-// ————————————————————————
-// Pan & zoom logic
-// ————————————————————————
-
 const wrapperRef = ref(null)
 const svgRef = ref(null)
 
@@ -155,9 +152,17 @@ const pan = ref({ x: 0, y: 0 })
 const hasCentered = ref(false)
 let resizeTimeout = null
 
+let lastMidpoint = null
+
 onMounted(() => {
   const handleResize = () => {
     clearTimeout(resizeTimeout)
+
+    svgRef.value?.addEventListener('touchmove', e => e.preventDefault(), { passive: false })
+
+    if (svgRef.value) {
+      svgRef.value.addEventListener('touchmove', e => e.preventDefault(), { passive: false })
+    }
 
     resizeTimeout = setTimeout(() => {
       if (hasCentered.value) return
@@ -188,6 +193,10 @@ onMounted(() => {
   })
 })
 
+// ————————————————————————
+// Mouse pan & zoom handlers
+// ————————————————————————
+
 let isPanning = false
 let lastPos = { x: 0, y: 0 }
 
@@ -213,6 +222,74 @@ function onZoom(e) {
   const direction = e.deltaY > 0 ? -1 : 1
   const scaleFactor = 1 + direction * 0.1
   zoom.value = Math.min(Math.max(zoom.value * scaleFactor, 0.2), 4)
+}
+
+// ————————————————————————
+// Touch pan & zoom handlers
+// ————————————————————————
+
+let isTouchPanning = false
+let lastTouchPos = { x: 0, y: 0 }
+let initialPinchDistance = null
+let initialZoom = zoom.value
+
+function startTouchPan(e) {
+  if (e.touches.length === 1) {
+    // One finger drag
+    isTouchPanning = true
+    const touch = e.touches[0]
+    lastTouchPos = { x: touch.clientX, y: touch.clientY }
+  } else if (e.touches.length === 2) {
+    isTouchPanning = false
+    initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1])
+    initialZoom = zoom.value
+    lastMidpoint = getMidpoint(e.touches[0], e.touches[1])
+  }
+}
+
+function getTouchDistance(t1, t2) {
+  const dx = t2.clientX - t1.clientX
+  const dy = t2.clientY - t1.clientY
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+function getMidpoint(t1, t2) {
+  return {
+    x: (t1.clientX + t2.clientX) / 2,
+    y: (t1.clientY + t2.clientY) / 2
+  }
+}
+
+function onTouchMove(e) {
+  if (e.touches.length === 1 && isTouchPanning) {
+    const touch = e.touches[0]
+    const dx = touch.clientX - lastTouchPos.x
+    const dy = touch.clientY - lastTouchPos.y
+    pan.value.x += dx
+    pan.value.y += dy
+    lastTouchPos = { x: touch.clientX, y: touch.clientY }
+  } else if (e.touches.length === 2) {
+    const newDistance = getTouchDistance(e.touches[0], e.touches[1])
+    const scale = newDistance / initialPinchDistance
+    const newZoom = Math.min(Math.max(initialZoom * scale, 0.2), 4)
+
+    // Compute zoom focal shift
+    const newMidpoint = getMidpoint(e.touches[0], e.touches[1])
+    const dx = newMidpoint.x - lastMidpoint.x
+    const dy = newMidpoint.y - lastMidpoint.y
+
+    // Adjust pan to keep midpoint stable
+    const zoomDelta = newZoom / zoom.value
+    pan.value.x = (pan.value.x - newMidpoint.x) * zoomDelta + newMidpoint.x + dx
+    pan.value.y = (pan.value.y - newMidpoint.y) * zoomDelta + newMidpoint.y + dy
+
+    zoom.value = newZoom
+    lastMidpoint = newMidpoint
+  }
+}
+
+function endTouchPan() {
+  isTouchPanning = false
 }
 
 // ————————————————————————
