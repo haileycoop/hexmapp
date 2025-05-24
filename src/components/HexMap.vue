@@ -8,11 +8,8 @@
         <image href="/maps/inkarnate-map.jpg" :x="cx0 - originInImage.x" :y="cy0 - originInImage.y" width="2048"
           height="1536" />
         <g v-for="hex in enrichedHexes" :key="hex.label">
-          <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')" :fill="hex.visibility === 'fog'
-            ? '#919191'
-            : hex.visibility === 'terrain'
-              ? (terrainColors[hex.terrain] || terrainColors.default)
-              : 'transparent'" class="hexagon" @click.stop="selectHex(hex)" />
+          <polygon :points="hex.corners.map(p => `${p.x},${p.y}`).join(' ')" :fill="getFill(hex)" class="hexagon"
+            @click.stop="selectHex(hex)" />
           <polygon v-if="hex.label === props.selectedHex?.label"
             :points="insetCorners(hex.corners).map(p => `${p.x},${p.y}`).join(' ')" class="hex-highlight"
             @click.stop="selectHex(hex)" />
@@ -28,7 +25,7 @@
 <script setup>
 
 // ————————————————————————
-// Pulling in hex data, geometry math, props
+// Imports and props
 // ————————————————————————
 
 import { ref, onMounted, onUnmounted, computed } from 'vue'
@@ -41,6 +38,9 @@ import {
   axialDistance,
   TOTAL_HEX_COUNT
 } from '../utils/hexUtils'
+import { useMainStore } from '../stores/store'
+
+const store = useMainStore()
 
 const props = defineProps({
   isGM: Boolean,
@@ -356,18 +356,44 @@ function endTouchPan() {
 }
 
 // ————————————————————————
-// Color map
+// Color map & fill management
 // ————————————————————————
 
 const terrainColors = {
-  forest: '#625729',
-  hills: '#998F50',
-  plains: '#A0B260',
-  foothills: '#907641',
-  mountains: '#4E4025',
-  water: '#7F9B9F',
-  default: '#919191'
+  forest: 'rgba(98, 87, 41, 1)',
+  hills: 'rgba(153, 143, 80, 1)',
+  plains: 'rgba(160, 178, 96, 1)',
+  foothills: 'rgba(144, 118, 65, 1)',
+  mountains: 'rgba(78, 64, 37, 1)',
+  water: 'rgba(127, 155, 159, 1)',
+  default: 'rgba(145, 145, 145, 1)'
 }
+
+function getFill(hex) {
+  // Always transparent for "clear" hexes
+  if (hex.visibility === 'clear') return 'transparent'
+
+  // For players: always show fog/terrain fills
+  if (!props.isGM) {
+    return hex.visibility === 'fog'
+      ? 'rgba(145, 145, 145, 1)'
+      : terrainColors[hex.terrain] || terrainColors.default
+  }
+
+  // For GM: only show fog/terrain if showFog is ON
+  if (store.showFog) {
+    const baseColor =
+      hex.visibility === 'fog'
+        ? 'rgba(145, 145, 145, 1)'
+        : terrainColors[hex.terrain] || terrainColors.default
+
+    return baseColor.replace('1)', '1)') // semi-transparent overlay
+  }
+
+  // GM with fog turned OFF
+  return 'transparent'
+}
+
 
 // ————————————————————————
 // Highlight helper (set stroke inside hex)

@@ -4,11 +4,11 @@
     <div><strong>Terrain:</strong> {{ hex?.terrain || 'Unknown' }}</div>
     <div>
       <strong>Notes:</strong>
-      <p class="note-text">{{ hex?.terrain ? hex.playerNotes || '' : '' }}</p>
+      <p class="note-text">{{ hex?.playerNotes || '—' }}</p>
     </div>
     <div v-if="isGM">
       <strong>GM Notes:</strong>
-      <p class="note-text">{{ hex?.gmNotes || '' }}</p>
+      <p class="note-text">{{ hex?.gmNotes || '—' }}</p>
     </div>
   </div>
 </template>
