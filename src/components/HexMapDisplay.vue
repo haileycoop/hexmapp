@@ -36,6 +36,7 @@ import { fetchHexData } from '../services/sheetService'
 import {
   axialToPixel,
   hexagonPoints,
+  hexSize,
   axialFromIndex,
   axialDistance,
   TOTAL_HEX_COUNT
@@ -150,9 +151,49 @@ const zoom = ref(defaultZoom)
 const pan = ref({ x: 0, y: 0 })
 
 const hasCentered = ref(false)
-let resizeTimeout = null
+const PAN_SENSITIVITY = 2 // Try 1.0 (normal), 1.5 (snappier), 2.0+ (fast)
+const PAN_MARGIN = hexSize * 1.5
 
+let resizeTimeout = null
 let lastMidpoint = null
+
+// ————————————————————————
+// Helper: prevent "stutter" and clamp zoom
+// ————————————————————————
+
+let dxAccum = 0
+let dyAccum = 0
+let animationFrame = null
+
+function applyPanDelta(dx, dy) {
+  dxAccum += dx
+  dyAccum += dy
+
+  if (!animationFrame) {
+    animationFrame = requestAnimationFrame(() => {
+      pan.value.x += dxAccum
+      pan.value.y += dyAccum
+
+      const wrapper = wrapperRef.value
+      if (wrapper) {
+        const clamped = clampPan(
+          pan.value,
+          zoom.value,
+          wrapper.clientWidth,
+          wrapper.clientHeight,
+          mapGeometry.value
+        )
+        pan.value.x = clamped.x
+        pan.value.y = clamped.y
+      }
+
+      dxAccum = 0
+      dyAccum = 0
+      animationFrame = null
+    })
+  }
+}
+
 
 onMounted(() => {
   const handleResize = () => {
@@ -193,6 +234,32 @@ onMounted(() => {
   })
 })
 
+function clampPan(pan, zoom, wrapperWidth, wrapperHeight, mapGeometry) {
+  const { minX, minY, width, height } = mapGeometry
+
+  // Convert viewport size from px to SVG units
+  const viewWidth = wrapperWidth / zoom
+  const viewHeight = wrapperHeight / zoom
+
+  // Define bounds in SVG units
+  const mapLeft = minX - PAN_MARGIN
+  const mapRight = minX + width + PAN_MARGIN
+  const mapTop = minY - PAN_MARGIN
+  const mapBottom = minY + height + PAN_MARGIN
+
+  // Calculate min/max pan values in SVG units
+  const minPanX = wrapperWidth - mapRight * zoom
+  const maxPanX = wrapperWidth - mapLeft * zoom - viewWidth * zoom
+
+  const minPanY = wrapperHeight - mapBottom * zoom
+  const maxPanY = wrapperHeight - mapTop * zoom - viewHeight * zoom
+
+  return {
+    x: Math.min(Math.max(pan.x, minPanX), maxPanX),
+    y: Math.min(Math.max(pan.y, minPanY), maxPanY)
+  }
+}
+
 // ————————————————————————
 // Mouse pan & zoom handlers
 // ————————————————————————
@@ -207,10 +274,9 @@ function startPan(e) {
 
 function onPan(e) {
   if (!isPanning) return
-  const dx = e.clientX - lastPos.x
-  const dy = e.clientY - lastPos.y
-  pan.value.x += dx
-  pan.value.y += dy
+  const dx = (e.clientX - lastPos.x) * PAN_SENSITIVITY
+  const dy = (e.clientY - lastPos.y) * PAN_SENSITIVITY
+  applyPanDelta(dx, dy)
   lastPos = { x: e.clientX, y: e.clientY }
 }
 
@@ -263,22 +329,19 @@ function getMidpoint(t1, t2) {
 function onTouchMove(e) {
   if (e.touches.length === 1 && isTouchPanning) {
     const touch = e.touches[0]
-    const dx = touch.clientX - lastTouchPos.x
-    const dy = touch.clientY - lastTouchPos.y
-    pan.value.x += dx
-    pan.value.y += dy
+    const dx = (touch.clientX - lastTouchPos.x) * PAN_SENSITIVITY
+    const dy = (touch.clientY - lastTouchPos.y) * PAN_SENSITIVITY
+    applyPanDelta(dx, dy)
     lastTouchPos = { x: touch.clientX, y: touch.clientY }
   } else if (e.touches.length === 2) {
     const newDistance = getTouchDistance(e.touches[0], e.touches[1])
     const scale = newDistance / initialPinchDistance
     const newZoom = Math.min(Math.max(initialZoom * scale, 0.2), 4)
 
-    // Compute zoom focal shift
     const newMidpoint = getMidpoint(e.touches[0], e.touches[1])
     const dx = newMidpoint.x - lastMidpoint.x
     const dy = newMidpoint.y - lastMidpoint.y
 
-    // Adjust pan to keep midpoint stable
     const zoomDelta = newZoom / zoom.value
     pan.value.x = (pan.value.x - newMidpoint.x) * zoomDelta + newMidpoint.x + dx
     pan.value.y = (pan.value.y - newMidpoint.y) * zoomDelta + newMidpoint.y + dy
